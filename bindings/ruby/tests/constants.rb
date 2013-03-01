@@ -23,7 +23,10 @@ class ConstantTest < Test::Unit::TestCase
     assert_equal  8192, Openwsman::FLAG_CIM_REFERENCES
     assert_equal 16384, Openwsman::FLAG_CIM_ASSOCIATORS
     assert_equal 32768, Openwsman::FLAG_EVENT_SENDBOOKMARK
-
+    assert_equal 0X10000, Openwsman::FLAG_CIM_SCHEMA_OPT
+    assert_equal 0X20000, Openwsman::FLAG_EXCLUDE_NIL_PROPS
+    assert_equal 0X40000, Openwsman::FLAG_QUEUE_REQUEST
+    
     assert_equal 0, Openwsman::WSMAN_DELIVERY_PUSH
     assert_equal 1, Openwsman::WSMAN_DELIVERY_PUSHWITHACK
     assert_equal 2, Openwsman::WSMAN_DELIVERY_EVENTS
