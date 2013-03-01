@@ -141,6 +141,24 @@ typedef struct {} client_opt_t;
   }
 
   /*
+   * Set/Get timeout for queued actions in seconds
+   *
+   */
+#if defined(SWIGRUBY)
+  %rename( "queue_timeout=" ) set_queue_timeout(unsigned int timeout);
+#endif
+  void set_queue_timeout(unsigned int timeout) {
+    $self->queue_timeout = timeout;
+  }
+
+#if defined(SWIGRUBY)
+  %rename( "queue_timeout" ) get_queue_timeout();
+#endif
+  int get_queue_timeout() {
+    return $self->queue_timeout;
+  }
+
+  /*
    * Operation timeout in milliseconds
    * See Openwsman::Transport.timeout for transport timeout
    *
