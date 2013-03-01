@@ -47,7 +47,6 @@ extern "C" {
 #include "u/buf.h"
 #include "wsman-client-api.h"
 #include "wsman-xml-serialize.h"
-#define WSMAN_CLIENT_BUSY       0x0001
 
 	struct _WsManConnection {
 		u_buf_t *request;
@@ -100,8 +99,7 @@ extern "C" {
 
 	struct _WsManClient {
 		void *hdl;
-		int flags;
-		pthread_mutex_t mutex;
+		pthread_mutex_t mutex; /* client busy mutex */
 		WsSerializerContextH serctx;
 		WsManClientData data;
 		WsManConnection *connection;
@@ -133,6 +131,7 @@ extern "C" {
 
 
 	int wsmc_lock(WsManClient * cl);
+	int wsmc_lock2(WsManClient * cl, client_opt_t *options);
 	void wsmc_unlock(WsManClient * cl);
 
 

@@ -68,7 +68,14 @@ extern void wsmc_handler(WsManClient * cl, WsXmlDocH rqstDoc,
 static long long transfer_time = 0;
 #endif
 
+/* old style wsman_send_request */
 int wsman_send_request(WsManClient * cl, WsXmlDocH request)
+{
+  return wsman_send_request2(cl, request, NULL);
+}
+
+/* new style wsman_send_request with ability to queue requests if client is busy */
+int wsman_send_request2(WsManClient * cl, WsXmlDocH request, client_opt_t *options)
 {
         int ret = 0;
 #ifdef BENCHMARK
@@ -76,9 +83,18 @@ int wsman_send_request(WsManClient * cl, WsXmlDocH request)
 	long long t0, t1;
 #endif
 
-	if (wsmc_lock(cl) != 0 ) {
-		error("Client busy");
-		return 1;
+	switch (wsmc_lock2(cl, options)) {
+          case 0:
+          break;
+          case EBUSY:
+            error("Client busy");
+            return 1;
+          case ETIMEDOUT:
+            error("Client request timeout");
+            return 1;
+          default:
+            error("Client request error");
+            return 1;          
 	}
 	wsmc_reinit_conn(cl);
 

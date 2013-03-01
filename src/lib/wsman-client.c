@@ -500,6 +500,18 @@ wsmc_set_delivery_security_mode(WsManDeliverySecurityMode delivery_sec_mode, cli
 }
 
 void
+wsmc_set_queue_timeout(unsigned int timeout, client_opt_t * options)
+{
+        options->queue_timeout = timeout;
+}
+
+unsigned int
+wsmc_get_queue_timeout(client_opt_t * options)
+{
+        return options->queue_timeout;
+}
+
+void
 wsmc_add_selector_from_uri(WsXmlDocH doc,
 		const char *resource_uri)
 {
@@ -1014,7 +1026,7 @@ _wsmc_action_create(WsManClient * cl,
 	if ((options->flags & FLAG_DUMP_REQUEST) == FLAG_DUMP_REQUEST) {
 		ws_xml_dump_node_tree(cl->dumpfile, ws_xml_get_doc_root(request));
 	}
-	if (wsman_send_request(cl, request)) {
+	if (wsman_send_request2(cl, request, options)) {
 		ws_xml_destroy_doc(request);
 		return NULL;
 	}
@@ -1083,7 +1095,7 @@ _wsmc_action_put(WsManClient * cl,
 	if ((options->flags & FLAG_DUMP_REQUEST) == FLAG_DUMP_REQUEST) {
 		ws_xml_dump_node_tree(cl->dumpfile, ws_xml_get_doc_root(request));
 	}
-	if (wsman_send_request(cl, request)) {
+	if (wsman_send_request2(cl, request, options)) {
 		ws_xml_destroy_doc(request);
 		return NULL;
 	}
@@ -1143,7 +1155,7 @@ wsmc_action_delete(WsManClient * cl,
 	if (!request)
 		return NULL;
 
-	if (wsman_send_request(cl, request)) {
+	if (wsman_send_request2(cl, request, options)) {
 		ws_xml_destroy_doc(request);
 		return NULL;
 	}
@@ -1188,7 +1200,7 @@ wsmc_action_get(WsManClient * cl,
 			WSMAN_ACTION_TRANSFER_GET, NULL, NULL);
 	if (!request)
 		return NULL;
-	if (wsman_send_request(cl, request)) {
+	if (wsman_send_request2(cl, request, options)) {
 		ws_xml_destroy_doc(request);
 		return NULL;
 	}
@@ -1221,7 +1233,7 @@ wsmc_action_get_and_put(WsManClient * cl,
 
 	wsmc_set_put_prop(get_response, put_request, options);
 	//ws_xml_destroy_doc(get_response);
-	if (wsman_send_request(cl, put_request)) {
+	if (wsman_send_request2(cl, put_request, options)) {
 		ws_xml_destroy_doc(put_request);
 		return NULL;
 	}
@@ -1279,7 +1291,7 @@ wsmc_action_invoke(WsManClient * cl,
 		ws_xml_dump_node_tree(cl->dumpfile, ws_xml_get_doc_root(request));
 	}
 
-	if (wsman_send_request(cl, request)) {
+	if (wsman_send_request2(cl, request, options)) {
 		ws_xml_destroy_doc(request);
 		return NULL;
 	}
@@ -1326,7 +1338,7 @@ wsmc_action_invoke_fromtext(WsManClient * cl,
 	}
 
 
-	if (wsman_send_request(cl, request)) {
+	if (wsman_send_request2(cl, request, options)) {
 		ws_xml_destroy_doc(request);
 		return NULL;
 	}
@@ -1359,7 +1371,7 @@ wsmc_action_invoke_serialized(WsManClient * cl,
 	}
 
 
-	if (wsman_send_request(cl, request)) {
+	if (wsman_send_request2(cl, request, options)) {
 		ws_xml_destroy_doc(request);
 		return NULL;
 	}
@@ -1378,7 +1390,7 @@ wsmc_action_identify(WsManClient * cl,
 			WSMAN_ACTION_IDENTIFY, NULL, NULL);
 	if (!request)
 		return NULL;
-	if (wsman_send_request(cl, request)) {
+	if (wsman_send_request2(cl, request, options)) {
 		ws_xml_destroy_doc(request);
 		return NULL;
 	}
@@ -1448,7 +1460,7 @@ wsmc_action_enumerate(WsManClient * cl,
 					WSMAN_ACTION_ENUMERATION, NULL, NULL);
 	if (!request)
 		return NULL;
-	if (wsman_send_request(cl, request)) {
+	if (wsman_send_request2(cl, request, options)) {
 		ws_xml_destroy_doc(request);
 		return NULL;
 	}
@@ -1471,7 +1483,7 @@ wsmc_action_pull(WsManClient * cl,
 	if (enumContext || (enumContext && enumContext[0] == 0)) {
 		WsXmlDocH request = wsmc_create_request(cl, resource_uri, options, filter,
 				WSMAN_ACTION_PULL,	NULL, (char *)enumContext);
-		if (wsman_send_request(cl, request)) {
+		if (wsman_send_request2(cl, request, options)) {
 			ws_xml_destroy_doc(request);
 			return NULL;
 		}
@@ -1509,7 +1521,7 @@ wsmc_action_release(WsManClient * cl,
 				NULL, (char *)enumContext);
 		if (!request)
 			return NULL;
-		if (wsman_send_request(cl, request)) {
+		if (wsman_send_request2(cl, request, options)) {
 			ws_xml_destroy_doc(request);
 			return NULL;
 		}
@@ -1529,7 +1541,7 @@ WsXmlDocH wsmc_action_subscribe(WsManClient * cl, const char *resource_uri,
 			WSMAN_ACTION_SUBSCRIBE, NULL, NULL);
 	if (!request)
 		return NULL;
-	if (wsman_send_request(cl, request)) {
+	if (wsman_send_request2(cl, request, options)) {
 		ws_xml_destroy_doc(request);
 		return NULL;
 	}
@@ -1547,7 +1559,7 @@ WsXmlDocH wsmc_action_unsubscribe(WsManClient * cl, const char *resource_uri,
 			WSMAN_ACTION_UNSUBSCRIBE, NULL, (void *)subsContext);
 	if (!request)
 		return NULL;
-	if (wsman_send_request(cl, request)) {
+	if (wsman_send_request2(cl, request, options)) {
 		ws_xml_destroy_doc(request);
 		return NULL;
 	}
@@ -1566,7 +1578,7 @@ WsXmlDocH wsmc_action_renew(WsManClient * cl, const char *resource_uri,
 	if (!request)
 		return NULL;
 
-	if (wsman_send_request(cl, request)) {
+	if (wsman_send_request2(cl, request, options)) {
 		ws_xml_destroy_doc(request);
 		return NULL;
 	}
@@ -1947,23 +1959,72 @@ wsmc_release(WsManClient * cl)
 int
 wsmc_lock(WsManClient * cl)
 {
-	pthread_mutex_lock(&cl->mutex);
-	if (cl->flags & WSMAN_CLIENT_BUSY) {
-		pthread_mutex_unlock(&cl->mutex);
-		return 1;
-	}
-	cl->flags |= WSMAN_CLIENT_BUSY;
-	pthread_mutex_unlock(&cl->mutex);
-	return 0;
+  return wsmc_lock2(cl, NULL);
+}
+
+/*
+ * try to lock the client
+ * return
+ *   0 - lock acquired
+ *   EBUSY - lock not acquired, client is busy
+ *   ETIMEDOUT - time out waiting for lock
+ *   else - other error
+ *
+ * if options != NULL and options->flags & FLAG_QUEUE_REQUEST
+ *   do a timed wait for options->queue_timeout seconds (defaults to DEFAULT_QUEUE_TIMEOUT)
+ *
+ */
+
+int
+wsmc_lock2(WsManClient * cl, client_opt_t *options)
+{
+  switch (pthread_mutex_trylock(&cl->mutex)) {
+    case 0:
+      return 0; /* lock acquired */
+    break;
+    case EBUSY: /* client busy */
+      if (options && (options->flags & FLAG_QUEUE_REQUEST)) {
+        struct timespec ts;
+        pthread_mutex_t *mutex;
+        mutex = u_malloc(sizeof(pthread_mutex_t));
+        if (mutex == NULL) {
+          error("malloc mutex");
+          break;
+        }
+        if (pthread_mutex_init(mutex, NULL) != 0) {
+          u_free(mutex);
+          error("pthread_mutex_init");
+          break;
+        }
+        if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
+          u_free(mutex);
+          error("clock_gettime");
+          break;
+        }
+        if (options->queue_timeout > 0) {
+          ts.tv_sec += options->queue_timeout;
+        }
+        else {
+          ts.tv_sec += DEFAULT_QUEUE_TIMEOUT;
+        }
+        ts.tv_nsec = 0;
+        return pthread_mutex_timedlock(&cl->mutex, &ts);
+      }
+      else {
+        return EBUSY;
+      }
+    break;
+    default:
+    break;
+  }
+  return 1;
 }
 
 
 void
 wsmc_unlock(WsManClient * cl)
 {
-	pthread_mutex_lock(&cl->mutex);
-	cl->flags &= ~WSMAN_CLIENT_BUSY;
-	pthread_mutex_unlock(&cl->mutex);
+  pthread_mutex_unlock(&cl->mutex);
 }
 
 

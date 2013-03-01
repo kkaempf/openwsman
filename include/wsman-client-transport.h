@@ -61,6 +61,7 @@ extern "C" {
 #define _WS_GSSNEGOTIATE_AUTH "GSS-Negotiate"
 
 int wsman_send_request(WsManClient *cl, WsXmlDocH request);
+int wsman_send_request2(WsManClient *cl, WsXmlDocH request, client_opt_t *options);
 
 /*
  * Set callback function to ask for username/password on authentication failure (http-401 returned)

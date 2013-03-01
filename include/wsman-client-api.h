@@ -172,7 +172,10 @@ typedef enum {
 #define FLAG_EVENT_SENDBOOKMARK		     0X8000
 #define FLAG_CIM_SCHEMA_OPT		    0X10000
 #define FLAG_EXCLUDE_NIL_PROPS		    0X20000
-
+/* queue this request if the previous one is still in progress. */
+#define FLAG_QUEUE_REQUEST		    0X40000
+/* default timeout for request queue in seconds */
+#define DEFAULT_QUEUE_TIMEOUT 1
 	typedef struct {
 		unsigned long flags;
 		char *fragment;
@@ -191,6 +194,7 @@ typedef enum {
 		unsigned int timeout;
 		unsigned int max_envelope_size;
 		unsigned int max_elements;
+		unsigned int queue_timeout; /* time to wait for a queued request in seconds */
 	} client_opt_t;
 
 
@@ -812,6 +816,12 @@ typedef enum {
 
 	void
 	wsmc_set_delivery_security_mode(WsManDeliverySecurityMode delivery_sec_mode, client_opt_t * options);
+
+	void
+        wsmc_set_queue_timeout(unsigned int timeout, client_opt_t * options);
+
+	unsigned int
+        wsmc_get_queue_timeout(client_opt_t * options);
 
 
 /** @} */
