@@ -47,6 +47,7 @@ extern "C" {
 #include "wsman-xml-serializer.h"
 #include "wsman-epr.h"
 #include "wsman-filter.h"
+#include "u/list.h"
 
 /**
  * @defgroup Client Client
@@ -186,13 +187,16 @@ typedef enum {
 		float heartbeat_interval;
 		float expires;
 		hash_t *selectors;
-		hash_t *properties;
+		list_t *properties; /* keep properties sorted */
 		unsigned int timeout;
 		unsigned int max_envelope_size;
 		unsigned int max_elements;
 	} client_opt_t;
 
-
+        typedef struct {
+          char *key;
+          selector_entry value; /* either char* or epr_t */
+        } client_property_t;
 
 	struct _WsManFault {
 		const char *code;

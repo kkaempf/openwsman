@@ -10,7 +10,6 @@
 %nodefault client_opt_t;
 typedef struct {} client_opt_t;
 
-
 /*
  * ClientOptions control the behaviour of the Client connection
  *
@@ -93,15 +92,12 @@ typedef struct {} client_opt_t;
 #if defined(SWIGRUBY)
   void add_property(VALUE k, VALUE v)
   {
-    VALUE k_s = rb_funcall(k, rb_intern("to_s"), 0 );
-    VALUE v_s = rb_funcall(v, rb_intern("to_s"), 0 );
-    const char *key = StringValuePtr(k_s);
-    const char *value = StringValuePtr(v_s);
+    _add_property(k, v, (VALUE)$self);
 #else
   void add_property(const char *key, const char *value)
   {
-#endif
     wsmc_add_property($self, key, value);
+#endif
   }
   
 #if defined(SWIGRUBY)
@@ -111,7 +107,11 @@ typedef struct {} client_opt_t;
   %rename( "properties=" ) set_properties(VALUE hash);
   void set_properties(VALUE hash)
   {
-    $self->properties = value2hash(NULL, hash);
+    if (NIL_P(hash)) return;
+  
+    Check_Type( hash, T_HASH );
+
+    rb_hash_foreach( hash, _add_property, (VALUE)$self );
   }
 #endif
 

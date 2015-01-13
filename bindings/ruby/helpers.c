@@ -38,6 +38,18 @@
 * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *****************************************************************************/
  
+/* add key/value property to (client_opt_t *)self */
+static void
+_add_property(VALUE k, VALUE v, VALUE self)
+{
+  VALUE k_s = rb_funcall(k, rb_intern("to_s"), 0 );
+  VALUE v_s = rb_funcall(v, rb_intern("to_s"), 0 );
+  const char *key = StringValuePtr(k_s);
+  const char *value = StringValuePtr(v_s);
+
+  wsmc_add_property((client_opt_t *)self, key, value);
+}
+
 /* convert char* to string VALUE */
 static VALUE
 makestring( const char *s )

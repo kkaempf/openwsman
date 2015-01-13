@@ -308,6 +308,29 @@ wsmc_options_init(void)
 	return op;
 }
 
+static void
+_wsmc_properties_destroy(list_t *properties)
+{
+  while (!list_isempty(properties)) {
+    lnode_t *node;
+    client_property_t *prop;
+    
+    node = list_del_last(properties);
+    if (!node)
+      break;
+    prop = (client_property_t *)node->list_data;
+    lnode_destroy(node);
+    u_free(prop->key);
+    if (prop->value.type == 0) {
+      u_free(prop->value.entry.text);
+    }
+    else {
+      epr_destroy(prop->value.entry.eprp);
+    }
+    u_free(prop);
+  }
+  list_destroy(properties);
+}
 
 void
 wsmc_options_destroy(client_opt_t * op)
@@ -315,10 +338,7 @@ wsmc_options_destroy(client_opt_t * op)
 	if (op->selectors) {
 		hash_free(op->selectors);
 	}
-	if (op->properties) {
-		hash_free(op->properties);
-	}
-
+        _wsmc_properties_destroy(op->properties);
 	u_free(op->fragment);
 	u_free(op->cim_ns);
 	u_free(op->delivery_uri);
@@ -343,21 +363,97 @@ wsmc_clear_action_option(client_opt_t * options, unsigned int flag)
 }
 
 
+/*
+ * compare two property list entries by key
+ */
+static int
+_property_key_compare(const void *node1, const void *node2)
+{
+  const char *key1 = ((client_property_t *)node1)->key;
+  const char *key2 = ((client_property_t *)node2)->key;
+  return strcmp(key1, key2);
+}
+
+/*
+ * (static function)
+ * Add property to options
+ * either as char* (string set, epr == NULL)
+ * or as epr_t (string == NULL, epr set)
+ */
+
+static void
+_wsmc_add_property(client_opt_t *options,
+		const char *key,
+		const char *string,
+		epr_t *epr)
+{
+  client_property_t *prop;
+  lnode_t *lnode;
+  if ((string != NULL) && (epr != NULL)) {
+    error("Ambiguous call to add_property");
+    return;
+  }
+  if (key == NULL) {
+    error("Can't add property with NULL key");
+    return;
+  }
+  if (options->properties == NULL) {
+    options->properties = list_create(LISTCOUNT_T_MAX);
+  }
+  if (list_find(options->properties, key, _property_key_compare)) {
+    error("duplicate key not added to properties");
+    return;
+  }
+  prop = u_malloc(sizeof(client_property_t));
+  if (!prop) {
+    error("No memory for property");
+    return;
+  }
+  prop->key = u_strdup(key);
+  if (string != NULL) {
+    prop->value.type = 0;
+    prop->value.entry.text = u_strdup(string);
+  } else if (epr != NULL) {
+    prop->value.type = 1;
+    prop->value.entry.eprp = epr_copy(epr);
+  } else {
+    error("Can't add NULL as property value");
+    return;
+  }
+  lnode = lnode_create(prop);
+  if (!lnode) {
+    error("No memory for property node");
+    return;
+  }
+  list_append(options->properties, lnode);
+}
+
+
+/*
+ * add a char* as property
+ *
+ */
+
 void
 wsmc_add_property(client_opt_t * options,
 		const char *key,
 		const char *value)
 {
-	if (options->properties == NULL)
-		options->properties = hash_create(HASHCOUNT_T_MAX, 0, 0);
-	if (!hash_lookup(options->properties, key)) {
-		if (!hash_alloc_insert(options->properties,
-					(char *)key, (char *)value)) {
-			error("hash_alloc_insert failed");
-		}
-	} else {
-		error("duplicate not added to hash");
-	}
+  _wsmc_add_property(options, key, value, NULL);
+}
+
+
+/*
+ * add an EndpointReference as property
+ *
+ */
+
+void
+wsmc_add_property_epr(client_opt_t * options,
+		const char *key,
+		epr_t *value)
+{
+  _wsmc_add_property(options, key, NULL, value);
 }
 
 void
@@ -399,7 +495,19 @@ wsmc_add_prop_from_str(client_opt_t * options,
 
         query = u_parse_query(query_string);
 	if (query) {
-		options->properties = query;
+          /* convert query hash to property list */
+          hscan_t hs;
+          hnode_t *hn;
+          _wsmc_properties_destroy(options->properties);
+          options->properties = NULL;
+          hash_scan_begin(&hs, query);
+          while ((hn = hash_scan_next(&hs))) {
+            _wsmc_add_property(options,
+                               (char *)hnode_getkey(hn),
+                               (char *)hnode_get(hn),
+                               NULL);
+          }
+          hash_free(query);
 	}
 }
 
@@ -752,8 +860,6 @@ wsmc_set_put_prop(WsXmlDocH get_response,
 {
 	WsXmlNodeH      resource_node;
 	char           *ns_uri;
-	hscan_t         hs;
-	hnode_t        *hn;
 	WsXmlNodeH      get_body = ws_xml_get_soap_body(get_response);
 	WsXmlNodeH      put_body = ws_xml_get_soap_body(put_request);
 
@@ -761,14 +867,20 @@ wsmc_set_put_prop(WsXmlDocH get_response,
 	resource_node = ws_xml_get_child(put_body, 0, NULL, NULL);
 	ns_uri = ws_xml_get_node_name_ns_uri(resource_node);
 
-	if (!options->properties) {
-		return;
-	}
-	hash_scan_begin(&hs, options->properties);
-	while ((hn = hash_scan_next(&hs))) {
-		WsXmlNodeH      n = ws_xml_get_child(resource_node, 0,
-				ns_uri, (char *) hnode_getkey(hn));
-		ws_xml_set_node_text(n, (char *) hnode_get(hn));
+	if (!list_isempty(options->properties)) {
+          lnode_t *node = list_first(options->properties);
+          while (node) {
+            client_property_t *property = (client_property_t *)node->list_data;
+            WsXmlNodeH n = ws_xml_get_child(resource_node, 0,
+                                            ns_uri, property->key);
+            if (property->value.type == 0) {
+              ws_xml_set_node_text(n, property->value.entry.text);
+            }
+            else {
+              epr_serialize(n, ns_uri, property->key, property->value.entry.eprp, 1);
+            }
+            node = list_next(options->properties, node);
+          }
 	}
 }
 
@@ -1235,24 +1347,26 @@ wsmc_action_invoke(WsManClient * cl,
 
 	body = ws_xml_get_soap_body(request);
 
-	if ((!options->properties ||
-                    hash_count(options->properties) == 0) &&
+	if (list_isempty(options->properties) &&
                 data != NULL) {
 
 		WsXmlNodeH n = ws_xml_get_doc_root(data);
 		ws_xml_duplicate_tree(ws_xml_get_soap_body(request), n);
-        } else if (options->properties &&
-                hash_count(options->properties) > 0 ) {
+        } else if (!list_isempty(options->properties)) {
             if (method) {
-                WsXmlNodeH node = ws_xml_add_empty_child_format(body,
-                        (char *)resource_uri, "%s_INPUT", method);
-                hash_scan_begin(&hs, options->properties);
-                while ((hn = hash_scan_next(&hs))) {
-                    ws_xml_add_child(node,
-                            (char *)resource_uri,
-                            (char *) hnode_getkey(hn),
-                            (char *) hnode_get(hn));
+              WsXmlNodeH xnode = ws_xml_add_empty_child_format(body,
+                                  (char *)resource_uri, "%s_INPUT", method);
+              lnode_t *lnode = list_first(options->properties);
+              while (lnode) {
+                client_property_t *property = (client_property_t *)lnode->list_data;
+                if (property->value.type == 0) {
+                  ws_xml_add_child(xnode, (char *)resource_uri, (char *)property->key, (char *)property->value.entry.text);
                 }
+                else {
+                  epr_serialize(xnode, (char *)resource_uri, property->key, property->value.entry.eprp, 1);
+                }
+                lnode = list_next(options->properties, lnode);
+              }
             }
         } else {
             ws_xml_add_empty_child_format(body,
