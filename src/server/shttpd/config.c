@@ -87,6 +87,7 @@ set_ssl(struct shttpd_ctx *ctx, void *arg, const char *pem)
 	SSL_CTX		*CTX;
 	void		*lib;
 	struct ssl_func	*fp;
+        char *ssl_disabled_protocols = wsmand_options_get_ssl_disabled_protocols();
 
 	arg = NULL;	/* Unused */
 
@@ -111,6 +112,35 @@ set_ssl(struct shttpd_ctx *ctx, void *arg, const char *pem)
 		elog(E_FATAL, NULL, "cannot open %s", pem);
 	else if (wsmand_options_get_ssl_key_file() && SSL_CTX_use_PrivateKey_file(CTX, wsmand_options_get_ssl_key_file(), SSL_FILETYPE_PEM) == 0)
 		elog(E_FATAL, NULL, "cannot open %s", pem);
+	while (ssl_disabled_protocols) {
+          struct ctx_opts_t {
+            char *name;
+            long opt;
+          } protocols[] = {
+            { "SSLv2", SSL_OP_NO_SSLv2 },
+            { "SSLv3", SSL_OP_NO_SSLv3 },
+            { "TLSv1", SSL_OP_NO_TLSv1 },
+            { NULL, 0 }
+          };
+          char *blank_ptr;
+          int idx;
+          if (*ssl_disabled_protocols == 0)
+            break;
+          blank_ptr = strchr(ssl_disabled_protocols, ' ');
+          if (blank_ptr == NULL)
+            blank_ptr = ssl_disabled_protocols + strlen(ssl_disabled_protocols);
+          for (idx = 0; protocols[idx].name ; ++idx) {
+            if (strncasecmp(protocols[idx].name, ssl_disabled_protocols, blank_ptr-ssl_disabled_protocols) == 0) {
+              debug("SSL: disable %s protocol", protocols[idx].name);
+              SSL_CTX_ctrl(CTX, SSL_CTRL_OPTIONS, protocols[idx].opt, NULL);                      
+              break;
+            }
+          }
+          if (*blank_ptr == 0)
+            break;
+          ssl_disabled_protocols = blank_ptr + 1;          
+        }
+
 	ctx->ssl_ctx = CTX;
 }
 #endif /* NO_SSL */
