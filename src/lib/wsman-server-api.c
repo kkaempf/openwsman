@@ -112,6 +112,8 @@ void *wsman_server_create_config(char *config_file)
 		soap = ws_context_get_runtime(cntx);
 		if (listener)
 			soap->listener = (WsManListenerH *)listener;
+	} else {
+		u_free(listener);
 	}
 	//debug_add_handler (debug_message_handler, DEBUG_LEVEL_ALWAYS, NULL);
 	return (void *) soap;

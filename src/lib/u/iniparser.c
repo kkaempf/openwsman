@@ -214,11 +214,20 @@ static dictionary * dictionary_new(int size)
     if (size<DICTMINSZ) size=DICTMINSZ ;
 
     d = (dictionary *)calloc(1, sizeof(dictionary));
-    d->size = size ;
-    d->val  = (char **)calloc(size, sizeof(char*));
-    d->key  = (char **)calloc(size, sizeof(char*));
-    d->hash = (unsigned int *)calloc(size, sizeof(unsigned));
-
+    if (d != NULL) {
+      d->size = size ;
+      d->val  = (char **)calloc(size, sizeof(char*));
+      d->key  = (char **)calloc(size, sizeof(char*));
+      d->hash = (unsigned int *)calloc(size, sizeof(unsigned));
+    }
+    if ((d == NULL) || (d->val == NULL) || (d->key == NULL) || (d->hash == NULL)) {
+      fprintf(stderr, "dictionary_new: memory allocation failure\n");
+      free(d->val);
+      free(d->key);
+      free(d->hash);
+      free(d);
+      d = NULL;
+    }
     return d;
 }
 
@@ -898,6 +907,10 @@ dictionary * iniparser_new(char *ininame)
      * Initialize a new dictionary entry
      */
     d = dictionary_new(0);
+    if (d == NULL) {
+      fclose(ini);
+      return d;
+    }
     lineno = 0 ;
     while (fgets(lin, ASCIILINESZ, ini)!=NULL) {
         lineno++ ;
@@ -931,6 +944,8 @@ dictionary * iniparser_new(char *ininame)
                     strcpy(val, strcrop(val, crop_key));
                 }
                 if (iniparser_add_entry(d, sec, key, val) != 0) {
+                  dictionary_del(d);
+                  fclose(ini);
                   return NULL;
                 }
             }

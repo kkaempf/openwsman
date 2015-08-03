@@ -249,6 +249,7 @@ hash_t *u_parse_query(const char *query)
 err:
 	u_free(q);
 	u_free(key);
+	hash_free(h);
 	return NULL;
 }
 
