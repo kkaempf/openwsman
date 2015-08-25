@@ -252,6 +252,8 @@ init_curl_transport(WsManClient *cl)
 {
 	CURL *curl;
 	CURLcode r = CURLE_OK;
+        dictionary *ini = iniparser_new(wsmc_get_conffile(cl));
+
 #define curl_err(str)  debug("Error = %d (%s); %s", \
 		r, curl_easy_strerror(r), str);
 	curl = curl_easy_init();
@@ -294,17 +296,13 @@ init_curl_transport(WsManClient *cl)
 	}
 	
 	if (0 != cl->authentication.verify_peer && 0 != cl->authentication.crl_check)
-	{
-		dictionary *ini = NULL;
-		
+	{		
 		if (cl->authentication.crl_file == NULL)
 		{
-			ini = iniparser_new(wsmc_get_conffile(cl));
 			if (ini != NULL)
 			{
 			        char *crlfile = iniparser_getstr(ini, "client:crlfile");
 				wsman_transport_set_crlfile(cl, crlfile);
-			        iniparser_free(ini);
 			}
 		}
 		if (cl->authentication.crl_file != NULL)
@@ -363,10 +361,12 @@ init_curl_transport(WsManClient *cl)
 
 
 
+        iniparser_free(ini);
 	return (void *)curl;
  DONE:
 	cl->last_error = convert_to_last_error(r);
 	curl_easy_cleanup(curl);
+        iniparser_free(ini);
 	return NULL;
 #undef curl_err
 }
