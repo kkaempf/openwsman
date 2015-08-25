@@ -299,7 +299,7 @@ init_curl_transport(WsManClient *cl)
 		
 		if (cl->authentication.crl_file == NULL)
 		{
-			ini = iniparser_new(cl->client_config_file);
+			ini = iniparser_new(wsmc_get_conffile(cl));
 			if (ini != NULL)
 			{
 			        char *crlfile = iniparser_getstr(ini, "client:crlfile");
