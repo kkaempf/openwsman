@@ -88,6 +88,7 @@ set_ssl(struct shttpd_ctx *ctx, void *arg, const char *pem)
 	void		*lib;
 	struct ssl_func	*fp;
         char *ssl_disabled_protocols = wsmand_options_get_ssl_disabled_protocols();
+        char *ssl_cipher_list = wsmand_options_get_ssl_cipher_list();
 
 	arg = NULL;	/* Unused */
 
@@ -159,7 +160,17 @@ set_ssl(struct shttpd_ctx *ctx, void *arg, const char *pem)
           ssl_disabled_protocols = blank_ptr + 1;          
         }
 
-	ctx->ssl_ctx = CTX;
+        if (ssl_cipher_list) {
+          int rc = SSL_CTX_set_cipher_list(CTX, ssl_cipher_list);
+          if (rc != 1) {
+            elog(E_LOG, NULL, "Failed to set SSL cipher list \"%s\"", ssl_cipher_list);
+          }
+          else {
+            debug("SSL: SSL_CTX_set_cipher_list to \"%s\"", ssl_cipher_list);
+          }
+        }
+
+        ctx->ssl_ctx = CTX;
 }
 #endif /* NO_SSL */
 
