@@ -180,7 +180,7 @@ const struct opt options[] = {
 	{'p', "listen_ports", "Listening ports", set_str,
 		OFS(ports), "ports", LISTENING_PORTS, OPT_ADVANCED},
 	{'D', "list_directories", "Directory listing", set_int,
-		OFS(dirlist), BOOL_OPT, "1", OPT_BOOL | OPT_ADVANCED},
+		OFS(dirlist), BOOL_OPT, "0", OPT_BOOL | OPT_ADVANCED},
 #ifndef NO_CGI
 	{'c', "cgi_extensions", "CGI extensions", set_str,
 		OFS(cgi_extensions), "ext_list", CGI_EXT, OPT_ADVANCED},
