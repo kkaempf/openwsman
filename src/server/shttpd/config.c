@@ -89,6 +89,7 @@ set_ssl(struct shttpd_ctx *ctx, void *arg, const char *pem)
 	struct ssl_func	*fp;
         char *ssl_disabled_protocols = wsmand_options_get_ssl_disabled_protocols();
         char *ssl_cipher_list = wsmand_options_get_ssl_cipher_list();
+        EC_KEY* key;
 
 	arg = NULL;	/* Unused */
 
@@ -127,6 +128,14 @@ set_ssl(struct shttpd_ctx *ctx, void *arg, const char *pem)
                 SSL_CTX_free(CTX);
                 CTX = NULL;
         }
+
+        /* This enables ECDH Perfect Forward secrecy. Currently with just the most generic p256 prime curve */
+        key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+        if (key != NULL) {
+          SSL_CTX_set_tmp_ecdh(CTX, key);
+          EC_KEY_free(key);
+        }
+
 	while (ssl_disabled_protocols) {
           struct ctx_opts_t {
             char *name;
