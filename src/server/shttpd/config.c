@@ -89,6 +89,7 @@ set_ssl(struct shttpd_ctx *ctx, void *arg, const char *pem)
 	struct ssl_func	*fp;
         char *ssl_disabled_protocols = wsmand_options_get_ssl_disabled_protocols();
         char *ssl_cipher_list = wsmand_options_get_ssl_cipher_list();
+        EC_KEY* key;
 
 	arg = NULL;	/* Unused */
 
@@ -109,11 +110,26 @@ set_ssl(struct shttpd_ctx *ctx, void *arg, const char *pem)
 	}
 	if ((CTX = SSL_CTX_new(SSLv23_server_method())) == NULL)
 		elog(E_FATAL, NULL, "SSL_CTX_new error");
-        else if (wsmand_options_get_ssl_cert_file() && SSL_CTX_use_certificate_file(CTX, wsmand_options_get_ssl_cert_file(),SSL_FILETYPE_PEM) == 0)
-		elog(E_FATAL, NULL, "cannot open %s", pem);
-	else if (wsmand_options_get_ssl_key_file() && SSL_CTX_use_PrivateKey_file(CTX, wsmand_options_get_ssl_key_file(), SSL_FILETYPE_PEM) == 0)
-		elog(E_FATAL, NULL, "cannot open %s", pem);
-	while (ssl_disabled_protocols) {
+        }
+        else if (wsmand_options_get_ssl_cert_file() && SSL_CTX_use_certificate_file(CTX, wsmand_options_get_ssl_cert_file(),SSL_FILETYPE_PEM) == 0) {
+		elog(E_FATAL, NULL, "cannot open %s : %s", pem, strerror(errno));
+                SSL_CTX_free(CTX);
+                CTX = NULL;
+        }
+	else if (wsmand_options_get_ssl_key_file() && SSL_CTX_use_PrivateKey_file(CTX, wsmand_options_get_ssl_key_file(), SSL_FILETYPE_PEM) == 0) {
+		elog(E_FATAL, NULL, "cannot open %s : %s", pem, strerror(errno));
+                SSL_CTX_free(CTX);
+                CTX = NULL;
+        }
+
+        /* This enables ECDH Perfect Forward secrecy. Currently with just the most generic p256 prime curve */
+        key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+        if (CTX && key != NULL) {
+          SSL_CTX_set_tmp_ecdh(CTX, key);
+          EC_KEY_free(key);
+        }
+
+	while (CTX && ssl_disabled_protocols) {
           struct ctx_opts_t {
             char *name;
             long opt;
@@ -142,7 +158,7 @@ set_ssl(struct shttpd_ctx *ctx, void *arg, const char *pem)
           ssl_disabled_protocols = blank_ptr + 1;          
         }
 
-        if (ssl_cipher_list) {
+        if (CTX && ssl_cipher_list) {
           int rc = SSL_CTX_set_cipher_list(CTX, ssl_cipher_list);
           if (rc != 1) {
             elog(E_FATAL, NULL, "Failed to set SSL cipher list \"%s\"", ssl_cipher_list);
