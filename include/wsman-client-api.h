@@ -755,6 +755,10 @@ typedef enum {
 	void wsmc_clear_action_option(client_opt_t * options,
 				     unsigned int);
 
+	void wsmc_set_selectors_from_uri(const char *resource_uri,
+					client_opt_t * options);
+
+        /* deprecated - use wsmc_set_selectors_from_uri() instead */
 	void wsmc_set_options_from_uri(const char *resource_uri,
 					client_opt_t * options);
 
