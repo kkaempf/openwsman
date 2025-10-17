@@ -107,9 +107,10 @@ class RDoc::Parser::SWIG < RDoc::Parser
 
   ##
   # Prepare to parse a SWIG file
+  # rdoc 3.4: stats parameter is optional
 
-  def initialize(top_level, file_name, content, options, stats)
-    super
+  def initialize(top_level, file_name, content, options, stats = nil)
+    super top_level, file_name, content, options
 
     @known_classes = RDoc::KNOWN_CLASSES.dup
     @content = handle_tab_width handle_ifdefs_in(@content)
@@ -365,10 +366,17 @@ class RDoc::Parser::SWIG < RDoc::Parser
       #meth_obj.params = params
       meth_obj.start_collecting_tokens
       begin
-        RDoc::const_get "RubyToken"
-        tk = RDoc::RubyToken::Token.new nil, 1, 1
-        tk.set_text body
-        meth_obj.offset  = offset
+        tk = nil
+	if RUBY_VERSION[0,3] == "3.4"
+	  RDoc::Parser::RipperStateLex::const_get "Token"
+          tk = RDoc::Parser::RipperStateLex::Token.new nil, 1, 1
+	  tk.text = body
+	else
+          RDoc::const_get "RubyToken"
+          tk = RDoc::RubyToken::Token.new nil, 1, 1
+	  tk.set_text body
+	  meth_obj.offset = offset
+	end
       rescue NameError
         # rdoc 2.5
         tk = { :line_no => 1, :char_no => 1, :text => body }
