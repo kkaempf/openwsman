@@ -1,5 +1,7 @@
 #!/usr/bin/ruby
-
+# use this for debugging:
+#!/usr/bin/ruby -d
+#
 # This is ./rdoc
 #
 # Call as
