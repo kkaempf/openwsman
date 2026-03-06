@@ -364,7 +364,13 @@ class RDoc::Parser::SWIG < RDoc::Parser
       find_modifiers comment, meth_obj if comment
 
       #meth_obj.params = params
-      meth_obj.start_collecting_tokens
+      begin
+        # new rdoc
+        meth_obj.start_collecting_tokens :swig
+      rescue
+        # old rdoc
+        meth_obj.start_collecting_tokens
+      end
       begin
         tk = nil
 	if RUBY_VERSION[0,3] == "3.4"
